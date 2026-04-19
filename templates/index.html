@@ -1,0 +1,232 @@
+<!doctype html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+:root {
+    --bg:#0f1115;
+    --card:#171a21;
+    --text:#e6e6e6;
+    --muted:#9aa0a6;
+    --accent:#4f9cff;
+    --ok:#39d98a;
+    --err:#ff4f4f;
+}
+
+body {
+    margin:0;
+    font-family:system-ui;
+    background:var(--bg);
+    color:var(--text);
+    display:flex;
+    justify-content:center;
+}
+
+.container { width:100%; max-width:650px; padding:20px; }
+
+.card {
+    background:var(--card);
+    padding:18px;
+    border-radius:14px;
+}
+
+.tabs {
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:6px;
+    margin-bottom:15px;
+}
+
+.tab {
+    text-align:center;
+    padding:10px;
+    border-radius:10px;
+    background:#0d0f14;
+    color:var(--muted);
+    text-decoration:none;
+    font-size:13px;
+}
+
+.tab.active {
+    background:var(--accent);
+    color:white;
+}
+
+input, select {
+    width:100%;
+    box-sizing:border-box;
+    padding:10px;
+    margin:6px 0 12px;
+    border-radius:10px;
+    border:1px solid #2a2f3a;
+    background:#0d0f14;
+    color:var(--text);
+}
+
+button {
+    width:100%;
+    padding:12px;
+    border:0;
+    border-radius:10px;
+    background:var(--accent);
+    color:white;
+    font-weight:600;
+}
+
+.status {
+    margin-top:12px;
+    padding:10px;
+    border-radius:10px;
+    white-space:pre-wrap;
+}
+
+.ok { background:rgba(57,217,138,0.15); color:var(--ok); }
+.err { background:rgba(255,79,79,0.15); color:var(--err); }
+
+pre {
+    background:#0d0f14;
+    padding:10px;
+    border-radius:10px;
+    overflow:auto;
+    font-size:12px;
+}
+
+.small { font-size:12px; color:var(--muted); }
+</style>
+</head>
+
+<body>
+<div class="container">
+<div class="card">
+
+<div class="tabs">
+<a class="tab {{'active' if page=='basic'}}" href="/">Podstawowy</a>
+<a class="tab {{'active' if page=='advanced'}}" href="/advanced">Zaawansowany</a>
+<a class="tab {{'active' if page=='history'}}" href="/history">Historia</a>
+<a class="tab {{'active' if page=='queue'}}" href="/queue">Kolejka</a>
+</div>
+
+{% if page == "basic" %}
+
+<form id="printForm">
+<input type="file" name="file" required>
+<button>DRUKUJ</button>
+</form>
+
+<div id="status"></div>
+
+<script>
+document.getElementById("printForm").onsubmit = async (e) => {
+    e.preventDefault();
+
+    let form = new FormData(e.target);
+
+    let res = await fetch("/api/print", {
+        method: "POST",
+        body: form
+    });
+
+    let data = await res.json();
+
+    document.getElementById("status").innerHTML =
+        `<div class='status ${data.ok ? "ok":"err"}'>${data.msg}</div>`;
+};
+</script>
+
+{% elif page == "advanced" %}
+
+<form method="post" enctype="multipart/form-data">
+<input type="file" name="file" required>
+
+<label>Kopie</label>
+<input name="copies" value="1">
+
+<label>Skala</label>
+<input name="scale" value="100">
+
+<label>Orientacja</label>
+<select name="orientation">
+<option value="portrait">Pionowa</option>
+<option value="landscape">Pozioma</option>
+</select>
+
+<label>Kolor</label>
+<select name="color">
+<option value="Color">Kolor</option>
+<option value="Mono">Mono</option>
+</select>
+
+<label>Jakość</label>
+<select name="quality">
+<option value="PlainNormal">Normal</option>
+<option value="PlainFast">Fast</option>
+<option value="Best">Best</option>
+</select>
+
+<button>DRUKUJ</button>
+</form>
+
+{% elif page == "history" %}
+
+<h3>Historia</h3>
+<pre id="hist"></pre>
+
+<script>
+async function loadHist(){
+    let r = await fetch("/api/history");
+    let d = await r.json();
+
+    document.getElementById("hist").innerText =
+        d.map(x => `${x.time} | ${x.file}`).join("\n");
+}
+
+loadHist();
+setInterval(loadHist, 3000);
+</script>
+
+{% elif page == "queue" %}
+
+<h3>Drukarka</h3>
+<pre id="printer"></pre>
+
+<h3>Kolejka</h3>
+<pre id="queue"></pre>
+
+<h4>Anuluj zadanie</h4>
+<input id="job" placeholder="job-id">
+<button onclick="cancel()">Cancel</button>
+
+<script>
+
+async function refresh(){
+    let r = await fetch("/api/status");
+    let d = await r.json();
+
+    document.getElementById("printer").innerText = d.printer;
+    document.getElementById("queue").innerText = d.queue;
+}
+
+async function cancel(){
+    let job = document.getElementById("job").value;
+
+    await fetch("/api/cancel", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({job})
+    });
+
+    refresh();
+}
+
+refresh();
+setInterval(refresh, 2000);
+
+</script>
+
+{% endif %}
+
+</div>
+</div>
+</body>
+</html>
