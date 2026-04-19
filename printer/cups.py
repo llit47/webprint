@@ -62,19 +62,19 @@ def normalize_scale(scale):
 def normalize_quality(quality):
     value = (quality or "Normal").strip()
     quality_map = {
-        "plainfast": "3",
-        "fast": "3",
-        "plainnormal": "4",
-        "normal": "4",
-        "best": "5",
+        "plainfast": "PlainFast",
+        "fast": "PlainFast",
+        "plainnormal": "PlainNormal",
+        "normal": "PlainNormal",
+        "best": "Best",
     }
-    return quality_map.get(value.lower(), "4")
+    return quality_map.get(value.lower(), value or "PlainNormal")
 
 
 def normalize_color(color):
     value = (color or "color").strip().lower()
-    if value == "mono":
-        return "Mono"
+    if value in {"mono", "gray", "grey", "grayscale", "greyscale"}:
+        return "Gray"
     return "Color"
 
 
@@ -86,7 +86,7 @@ def build_print_command(file_path, copies, quality, scale, color):
         "-n",
         normalize_copies(copies),
         "-o",
-        f"print-quality={normalize_quality(quality)}",
+        f"BRPrintQuality={normalize_quality(quality)}",
         "-o",
         f"scaling={normalize_scale(scale)}",
         "-o",
