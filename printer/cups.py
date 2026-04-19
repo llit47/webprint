@@ -95,13 +95,22 @@ def build_print_command(file_path, copies, quality, scale, color):
     ]
 
 
+def iter_print_paths(printable):
+    if isinstance(printable, dict):
+        return printable.get("print_paths", [])
+    if isinstance(printable, (list, tuple)):
+        return list(printable)
+    return [printable]
+
+
 def print_file(file_path, filename, copies="1", quality="Normal", scale="100", color="color"):
     try:
-        subprocess.run(
-            build_print_command(file_path, copies, quality, scale, color),
-            check=True,
-            timeout=10,
-        )
+        for path in iter_print_paths(file_path):
+            subprocess.run(
+                build_print_command(path, copies, quality, scale, color),
+                check=True,
+                timeout=30,
+            )
 
         save_history(
             {
