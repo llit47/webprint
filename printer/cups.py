@@ -45,10 +45,60 @@ def cancel_job(job):
         return False
 
 
-def print_file(file_path, filename):
+def normalize_copies(copies):
+    try:
+        return str(max(1, int(copies)))
+    except:
+        return "1"
+
+
+def normalize_scale(scale):
+    try:
+        return str(max(1, int(scale)))
+    except:
+        return "100"
+
+
+def normalize_quality(quality):
+    value = (quality or "Normal").strip()
+    quality_map = {
+        "plainfast": "3",
+        "fast": "3",
+        "plainnormal": "4",
+        "normal": "4",
+        "best": "5",
+    }
+    return quality_map.get(value.lower(), "4")
+
+
+def normalize_color(color):
+    value = (color or "color").strip().lower()
+    if value == "mono":
+        return "Mono"
+    return "Color"
+
+
+def build_print_command(file_path, copies, quality, scale, color):
+    return [
+        "lp",
+        "-d",
+        PRINTER_NAME,
+        "-n",
+        normalize_copies(copies),
+        "-o",
+        f"print-quality={normalize_quality(quality)}",
+        "-o",
+        f"scaling={normalize_scale(scale)}",
+        "-o",
+        f"ColorModel={normalize_color(color)}",
+        file_path,
+    ]
+
+
+def print_file(file_path, filename, copies="1", quality="Normal", scale="100", color="color"):
     try:
         subprocess.run(
-            ["lp", "-d", PRINTER_NAME, file_path],
+            build_print_command(file_path, copies, quality, scale, color),
             check=True,
             timeout=10,
         )

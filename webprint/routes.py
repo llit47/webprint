@@ -1,4 +1,4 @@
-from flask import jsonify, render_template, request
+from flask import jsonify, redirect, render_template, request, url_for
 
 from converters import prepare_for_print
 from printer import cancel_job, get_printer, get_queue, print_file
@@ -6,6 +6,19 @@ from storage import load_history, save_upload
 
 
 def register_routes(app):
+    def get_print_options():
+        copies = request.form.get("copies", "1")
+        quality = request.form.get("quality", "Normal")
+        scale = request.form.get("scale", "100")
+        color = request.form.get("color", "color")
+
+        return {
+            "copies": copies,
+            "quality": quality,
+            "scale": scale,
+            "color": color,
+        }
+
     @app.route("/")
     def home():
         return render_template("index.html", page="basic")
@@ -16,9 +29,10 @@ def register_routes(app):
             upload = request.files["file"]
             path = save_upload(upload)
             printable_path = prepare_for_print(path, upload.filename)
+            print_options = get_print_options()
 
-            ok, msg = print_file(printable_path, upload.filename)
-            return msg
+            print_file(printable_path, upload.filename, **print_options)
+            return redirect(url_for("home"))
 
         return render_template("index.html", page="advanced")
 
@@ -35,8 +49,9 @@ def register_routes(app):
         upload = request.files["file"]
         path = save_upload(upload)
         printable_path = prepare_for_print(path, upload.filename)
+        print_options = get_print_options()
 
-        ok, msg = print_file(printable_path, upload.filename)
+        ok, msg = print_file(printable_path, upload.filename, **print_options)
         return jsonify({"ok": ok, "msg": msg})
 
     @app.route("/api/history")
